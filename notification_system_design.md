@@ -392,6 +392,14 @@ For larger notification loads, the backend should not send all notifications dir
   "targetStudentIds": [1042, 1043, 1044],
   "priority": "high"
 }
+```
+
+## Why Queue is Useful
+
+- API response becomes faster.
+- Large student batches can be processed in the background.
+- Failed jobs can be retried.
+- Notification delivery becomes easier to scale.
 
 # Stage 5
 
@@ -403,9 +411,72 @@ The backend should protect notification APIs because only authorized users or se
 
 All protected APIs should use bearer token authentication.
 
-Example:
-
 ```json
 {
   "Authorization": "Bearer <token>"
 }
+```
+
+## Authorization
+
+Notification creation should be allowed only for trusted roles such as admin, placement team, exam cell, or authorized campus services.
+
+Students should only be allowed to read, update, or delete their own notification records.
+
+## Input Validation
+
+The backend should validate:
+
+- notification type
+- title
+- message
+- target student IDs
+- priority value
+
+Empty title or message should be rejected.
+
+## Rate Limiting
+
+Rate limiting can be applied to avoid repeated API abuse from the same user or service.
+
+## Audit Logs
+
+Important actions should be logged:
+
+- notification created
+- notification delivered
+- notification read
+- notification deleted
+- delivery failed
+
+# Stage 6
+
+## Priority Inbox
+
+The priority inbox fetches notifications from the provided Notification API and returns the top `n` notifications.
+
+## Priority Rule
+
+Notification priority is calculated using notification type and recency.
+
+Type weight:
+
+```txt
+Placement = 3
+Result = 2
+Event = 1
+```
+
+Notifications with higher type weight are shown first. If two notifications have the same type, the newer notification is shown first.
+
+## Endpoint Implemented
+
+`GET /notifications/priority?n=10`
+
+## Response
+
+The endpoint returns the top 10 priority notifications along with the priority rule used by the backend.
+
+## Maintaining Top 10 Efficiently
+
+For the given API response size, sorting the fetched notifications is sufficient. If the notification volume increases continuously, the backend can maintain a small heap of size 10, so only the best 10 notifications are kept while processing new notifications.
