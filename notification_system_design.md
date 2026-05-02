@@ -334,3 +334,36 @@ AND notification_id = 'notification_uuid';
 ## Scaling Notes
 
 This design avoids duplicating notification message content. The same notification can be mapped to multiple students through `student_notifications`. Indexes on `student_id`, `is_read`, and `created_at` help fetch notification lists and unread counts faster.
+
+# Stage 3
+
+## Backend Flow
+
+1. Admin or campus service sends a notification request.
+2. Backend validates the request and creates one notification record.
+3. Backend maps that notification to the selected students.
+4. Students fetch their notifications using the student notification API.
+5. Read/unread status is updated separately for each student.
+6. Online students can receive new notification events through the stream endpoint.
+
+## Components
+
+### API Layer
+
+Handles incoming REST requests, validates input, and returns JSON responses.
+
+### Service Layer
+
+Contains notification creation logic, student mapping logic, and read/unread update logic.
+
+### Database Layer
+
+Stores notification data and student-wise delivery/read status.
+
+### Real-Time Layer
+
+Uses Server-Sent Events for sending new notifications to active students.
+
+## Failure Handling
+
+If real-time delivery fails, the notification is still stored in the database. The student can fetch it later using the normal notification API.
