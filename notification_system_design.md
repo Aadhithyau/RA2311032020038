@@ -392,3 +392,20 @@ For larger notification loads, the backend should not send all notifications dir
   "targetStudentIds": [1042, 1043, 1044],
   "priority": "high"
 }
+
+# Stage 5
+
+## Basic Security and Validation
+
+The backend should protect notification APIs because only authorized users or services should create campus notifications.
+
+## Authentication
+
+All protected APIs should use bearer token authentication.
+
+Example:
+
+```json
+{
+  "Authorization": "Bearer <token>"
+}
