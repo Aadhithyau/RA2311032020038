@@ -367,3 +367,28 @@ Uses Server-Sent Events for sending new notifications to active students.
 ## Failure Handling
 
 If real-time delivery fails, the notification is still stored in the database. The student can fetch it later using the normal notification API.
+
+# Stage 4
+
+## Queue Based Processing
+
+For larger notification loads, the backend should not send all notifications directly inside the request cycle. Instead, it can place notification jobs into a queue.
+
+## Flow
+
+1. Admin creates a notification.
+2. API stores the notification.
+3. A delivery job is added to a queue.
+4. Worker reads the job from the queue.
+5. Worker creates student notification mappings.
+6. Online users receive real-time events.
+7. Offline users fetch notifications later through REST APIs.
+
+## Queue Message Format
+
+```json
+{
+  "notificationId": "9f4d23a1-4b54-4f7d-9d35-a02e2f1c83fd",
+  "targetStudentIds": [1042, 1043, 1044],
+  "priority": "high"
+}
