@@ -233,3 +233,104 @@ The campus notification platform should support these backend actions:
 }
 ```
 
+# Stage 2
+
+## Database Design
+
+The notification system needs separate tables for students, notifications, and student-wise notification status. This avoids storing repeated notification content for every student.
+
+## Tables
+
+### students
+
+```sql
+CREATE TABLE students (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    department VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+```
+
+### notifications
+
+```sql
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    priority VARCHAR(20) DEFAULT 'normal',
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### student_notifications
+
+```sql
+CREATE TABLE student_notifications (
+    id UUID PRIMARY KEY,
+    student_id INT NOT NULL,
+    notification_id UUID NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMP NULL,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (notification_id) REFERENCES notifications(id)
+);
+```
+
+## Indexes
+
+```sql
+CREATE INDEX idx_student_notifications_student_id
+ON student_notifications(student_id);
+
+CREATE INDEX idx_student_notifications_unread
+ON student_notifications(student_id, is_read);
+
+CREATE INDEX idx_notifications_created_at
+ON notifications(created_at);
+```
+
+## Relationships
+
+- One student can have many notification records.
+- One notification can be delivered to many students.
+- `student_notifications` tracks read, unread, deleted, and delivery status for each student.
+
+## Read/Unread Handling
+
+When a notification is created, one row is inserted in `notifications`. For each target student, a row is inserted in `student_notifications`.
+
+Unread notifications are fetched using:
+
+```sql
+SELECT n.id, n.type, n.title, n.message, n.created_at
+FROM notifications n
+JOIN student_notifications sn
+ON n.id = sn.notification_id
+WHERE sn.student_id = 1042
+AND sn.is_read = FALSE
+AND sn.is_deleted = FALSE
+ORDER BY n.created_at DESC;
+```
+
+Marking a notification as read only updates the student-specific row:
+
+```sql
+UPDATE student_notifications
+SET is_read = TRUE,
+    read_at = CURRENT_TIMESTAMP
+WHERE student_id = 1042
+AND notification_id = 'notification_uuid';
+```
+
+## Scaling Notes
+
+This design avoids duplicating notification message content. The same notification can be mapped to multiple students through `student_notifications`. Indexes on `student_id`, `is_read`, and `created_at` help fetch notification lists and unread counts faster.
